@@ -10,8 +10,6 @@ Este proyecto implementa un sistema de comunicación cliente-servidor utilizando
 - [Cómo Ejecutar](#cómo-ejecutar)
 - [Algoritmo del Servidor](#algoritmo-del-servidor)
 - [Algoritmo del Cliente](#algoritmo-del-cliente)
-- [Contribuciones](#contribuciones)
-- [Licencia](#licencia)
 
 ## Descripción
 
