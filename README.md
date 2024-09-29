@@ -26,8 +26,8 @@ Este sistema permite que múltiples clientes se conecten a un servidor, envíen 
 
 1. Clona este repositorio:
    ```bash
-   git clone <url-del-repositorio>
-   cd <nombre-del-repositorio>
+   git clone https://github.com/acaycedo/ClienteServidor.git
+   cd https://github.com/acaycedo/ClienteServidor.git
 Primero, inicia el servidor:
   python servidor.py
 Luego, inicia el cliente en otra terminal:
