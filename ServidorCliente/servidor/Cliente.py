@@ -1,72 +1,112 @@
-#Importa la libreria de sockets que son el punto final de la comunicacion entre dos maquinas.
-#Se considera como el canal donde se permite enviar y recibir datos entre cliente servidor.
 import socket
-#Libreria de hilos que basicamente permiten la ejecucion de codigo simultaneo o multiples tareas mejorando eficiencia.
 import threading
+import tkinter as tk
+from tkinter import scrolledtext, messagebox
 
-# Función para recibir mensajes del servidor
-def recibir_mensajes(conn):
-    while True:
-        try:
-            #Intentara ricibir hasta 2048 bytes de datos del cliente y luego transforma los bytes en una cadena de texto UTF_8
-            mensaje = conn.recv(2048).decode("UTF_8")
+# Clase del Cliente
+class Cliente:
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-            #Si mensaje tiene contenido
-            if mensaje:
-                #tratara de formatear la cadena para mostrar que es mensaje del servidor
-                print(f"\nServidor: {mensaje}")
-            else:   
-                break
-        except:
-            #En caso de no recibir mensaje imprime
-            print("\nError al recibir el mensaje.")
-            break
-
-# Función principal del cliente
-def main():
-    # Configuración del cliente
-    # En este apartado se encargara de que el cliente ingrese los datos del host
-    host = input("Ingrese la IP del servidor: ")
-    port = int(input("Ingrese el puerto: "))
-
-    # Crear un socket
-    # AF_INET establece que el socket usara address family version 4 o direcciones IPv4 que son las mas comunes.
-    # SOCK_STREAM Establece que el socket sera de tipo stream es decir que utilizara el protocolo TCP garantizando la entrega en el orden correcto de los paquetes que continen los datos y sin perdidas.
-    
-    # Se utiliza socket.socket para crear una interfaz u objeto para la comunicación en la red
-    # Luego indicamos que socket usara esos dos parametros ya que los establecimos en el servidor
-    conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # Se usa el try para capturar alguna excepcion en caso de fallo
-    try:
         # Conectar al servidor
-        # Intentara conectarse al servidor usando los parametros ingresados
-        conn.connect((host, port))
-        # Mensaje de Exito
-        print("Conectado al servidor.")
+        try:
+            self.sock.connect((self.host, self.port))
+            print("Conectado al servidor")
+        except Exception as e:
+            print("No se pudo conectar al servidor:", e)
+            messagebox.showerror("Error", "No se pudo conectar al servidor.")
 
-        # Iniciar hilo para recibir mensajes
-        # Cuando inicie el hilo establecido con el servidor llamara la funcion recibir_mensajes
-        # Pasando conn como argumento
-        # y daemon usado para que en caso de se cierre el hilo finalice automaticamente
+        # Iniciar el hilo para recibir mensajes
+        self.receive_thread = threading.Thread(target=self.recibir_mensajes)
+        self.receive_thread.daemon = True  # Permite que el hilo se cierre al cerrar la aplicación
+        self.receive_thread.start()
 
-        threading.Thread(target=recibir_mensajes, args=(conn,), daemon=True).start()
+    def enviar_mensaje(self, mensaje):
+        if mensaje:
+            self.sock.send(mensaje.encode("UTF-8"))
 
-        # Bucle para que el usuario le permite enviar mensajes 
-        # y en caso de finalizar la conversacion solo debe escribir la palabra salir
-        # se pasa como parametro lower, para evitar errores de usuario
+    def recibir_mensajes(self):
         while True:
-            # Enviar mensaje al servidor
-            mensaje = input("Cliente: ")
-            if mensaje.lower() == "salir":
+            try:
+                reply = self.sock.recv(2048).decode("UTF-8")
+                if reply:
+                    app.agregar_mensaje(f"Servidor: {reply}")
+            except Exception as e:
+                print("Error al recibir mensaje:", e)
                 break
-            conn.send(mensaje.encode("UTF_8"))
-            # Excepcion que captura elgun error que pase durante la conexion
-    except Exception as e:
-        print(f"Ocurrió un error: {e}")
-        # Este bloque se encarga de cerrar el socket dependiendo si hubo un error o no con el fin de notificar al usuario si exite un error o no.
-    finally:
-        conn.close()
-        print("Conexión cerrada.")
 
+# Clase de la Interfaz Gráfica
+class App:
+    def __init__(self, master):
+        self.master = master
+        master.title("Cliente Chat")
+
+        # Campo para IP
+        self.ip_label = tk.Label(master, text="IP del servidor:")
+        self.ip_label.pack(pady=5)
+        self.ip_entry = tk.Entry(master)
+        self.ip_entry.pack(padx=10, pady=5)
+
+        # Campo para puerto
+        self.port_label = tk.Label(master, text="Puerto:")
+        self.port_label.pack(pady=5)
+        self.port_entry = tk.Entry(master)
+        self.port_entry.pack(padx=10, pady=5)
+
+        # Botón para conectar
+        self.connect_button = tk.Button(master, text="Conectar", command=self.conectar)
+        self.connect_button.pack(pady=10)
+
+        # Área de chat
+        self.chat_area = scrolledtext.ScrolledText(master, state='disabled')
+        self.chat_area.pack(padx=10, pady=10)
+
+        # Campo para mensajes
+        self.entry = tk.Entry(master)
+        self.entry.pack(padx=10, pady=5)
+        self.entry.bind("<Return>", self.enviar_mensaje)
+
+        # Botón para enviar mensajes
+        self.enviar_button = tk.Button(master, text="Enviar", command=self.enviar_mensaje)
+        self.enviar_button.pack(pady=5)
+
+        self.cliente = None  # Inicialmente no hay cliente
+
+    def conectar(self):
+        host = self.ip_entry.get()
+        port = self.port_entry.get()
+
+        if not host or not port:
+            messagebox.showwarning("Advertencia", "Por favor, ingrese la IP y el puerto.")
+            return
+
+        try:
+            port = int(port)  # Convertir el puerto a un entero
+            self.cliente = Cliente(host, port)
+            self.ip_entry.config(state='disabled')
+            self.port_entry.config(state='disabled')
+            self.connect_button.config(state='disabled')  # Deshabilitar el botón de conexión
+        except ValueError:
+            messagebox.showerror("Error", "El puerto debe ser un número válido.")
+        except Exception as e:
+            print("Error al conectar:", e)
+
+    def agregar_mensaje(self, mensaje):
+        self.chat_area.config(state='normal')
+        self.chat_area.insert(tk.END, mensaje + '\n')
+        self.chat_area.config(state='disabled')
+        self.chat_area.yview(tk.END)  # Desplaza hacia abajo
+
+    def enviar_mensaje(self, event=None):
+        mensaje = self.entry.get()
+        if self.cliente:  # Verificar si hay un cliente conectado
+            self.cliente.enviar_mensaje(mensaje)
+            self.entry.delete(0, tk.END)  # Limpiar entrada
+
+# Configuración de la ventana
 if __name__ == "__main__":
-    main()
+    root = tk.Tk()
+    app = App(root)
+    root.mainloop()
